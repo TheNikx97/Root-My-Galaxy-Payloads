@@ -1,0 +1,42 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'  # Esegue ogni giorno a mezzanotte UTC
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup dependencies
+      run: |
+        # Installa Android NDK (se necessario)
+        # Puoi personalizzare questa sezione per scaricare l'NDK se non già presente
+        # Oppure puoi usare un'azione predefinita se disponibile
+        sudo apt-get update
+        sudo apt-get install -y unzip
+
+        # Scarica Android NDK se necessario
+        # curl -O https://dl.google.com/android/repository/android-ndk-rXX.zip
+        # unzip android-ndk-rXX.zip -d $HOME/android-ndk
+
+    - name: Set environment variables
+      run: |
+        echo "ANDROID_NDK_HOME=/path/to/android-ndk" >> $GITHUB_ENV
+
+    - name: Run make target r0s-S901BXXSNGZD7
+      run: |
+        make TARGET=r0s-S901BXXSNGZD7 ANDROID_NDK_HOME=$ANDROID_NDK_HOME
+
+    - name: Run make release
+      run: |
+        make TARGET=r0s-S901BXXSNGZD7 ANDROID_NDK_HOME=$ANDROID_NDK_HOME release

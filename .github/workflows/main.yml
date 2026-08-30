@@ -29,6 +29,18 @@ jobs:
         # curl -O https://dl.google.com/android/repository/android-ndk-rXX.zip
         # unzip android-ndk-rXX.zip -d $HOME/android-ndk
 
+        - name: Setup NDK
+      run: |
+        chmod +x ./scripts/setup-ndk.sh
+        ./scripts/setup-ndk.sh
+
+    # Altre fasi di build o test
+    - name: Build
+      run: |
+        # Usa la variabile ANDROID_NDK_HOME
+        echo "Using NDK at $ANDROID_NDK_HOME"
+        # Qui puoi aggiungere i tuoi comandi di build, come make, gradle, ecc.
+
     - name: Set environment variables
       run: |
         echo "ANDROID_NDK_HOME=/path/to/android-ndk" >> $GITHUB_ENV

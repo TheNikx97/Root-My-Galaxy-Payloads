@@ -1,5 +1,3 @@
-name=src/slide_app.c
-[entire file contents]
 #include "common.h"
 
 #ifndef SLIDE_MAX_ATTEMPTS

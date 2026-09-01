@@ -1,39 +1,119 @@
-name: Build
+name: Build r0s-S901BXXSNGZD7
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Build Galaxy S22 r0s-S901BXXSNGZD7
+    runs-on: ubuntu-24.04
+
+    env:
+      TARGET: r0s-S901BXXSNGZD7
+      ANDROID_NDK_VERSION: 29.0.13113456
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Android NDK
-        id: setup-ndk
-        uses: nttld/setup-ndk@v1
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
-          ndk-version: r27
-          link-to-sdk: true
+          distribution: temurin
+          java-version: '17'
 
-      - name: Build (debug)
-        run: make TARGET=r0s-S901BXXSNGZD7 ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }}
+      - name: Install Android SDK command-line tools
+        uses: android-actions/setup-android@v3
 
-      - name: Build (release)
-        run: make TARGET=r0s-S901BXXSNGZD7 ANDROID_NDK_HOME=${{ steps.setup-ndk.outputs.ndk-path }} release
-
-      - name: Debug - list generated files
+      - name: Install Android NDK r29
+        shell: bash
         run: |
-          echo "== File modificati/creati dopo il Makefile =="
-          find . -newer Makefile -type f -not -path "./.git/*"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
 
-      - name: Upload build artifacts
+      - name: Set ANDROID_NDK_HOME
+        shell: bash
+        run: |
+          NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+
+          if [ ! -d "$NDK_HOME" ]; then
+            echo "ERROR: NDK not found at:"
+            echo "$NDK_HOME"
+            exit 1
+          fi
+
+          echo "ANDROID_NDK_HOME=$NDK_HOME" >> "$GITHUB_ENV"
+
+      - name: Verify target
+        shell: bash
+        run: |
+          test -f "src/targets/${TARGET}/target.h"
+          test -f "src/targets/${TARGET}/p0_fingerprint.h"
+          test -f "src/targets/${TARGET}/README.md"
+
+          echo "TARGET=${TARGET}"
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}"
+
+          ls -l \
+            "src/targets/${TARGET}/target.h" \
+            "src/targets/${TARGET}/p0_fingerprint.h"
+
+      - name: Verify NDK compiler
+        shell: bash
+        run: |
+          COMPILER="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang"
+
+          if [ ! -x "$COMPILER" ]; then
+            echo "ERROR: compiler not found:"
+            echo "$COMPILER"
+            exit 1
+          fi
+
+          "$COMPILER" --version
+
+      - name: Build
+        shell: bash
+        run: |
+          make clean TARGET="${TARGET}" || true
+
+          make \
+            TARGET="${TARGET}" \
+            ANDROID_NDK_HOME="${ANDROID_NDK_HOME}" \
+            all
+
+      - name: Build release
+        shell: bash
+        run: |
+          make \
+            TARGET="${TARGET}" \
+            ANDROID_NDK_HOME="${ANDROID_NDK_HOME}" \
+            release
+
+      - name: Show build outputs
+        shell: bash
+        run: |
+          echo "=== Build directory ==="
+          find "build/${TARGET}" -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
+          echo
+          echo "=== Repository artifacts ==="
+          find "artifacts/${TARGET}" -maxdepth 1 -type f -printf '%p %s bytes\n' 2>/dev/null | sort || true
+
+      - name: Upload build directory
         uses: actions/upload-artifact@v4
         with:
           name: r0s-S901BXXSNGZD7-build
-          path: |
-            build/**
+          path: build/r0s-S901BXXSNGZD7/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload repository artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: r0s-S901BXXSNGZD7-artifacts
+          path: artifacts/r0s-S901BXXSNGZD7/
           if-no-files-found: warn
+          retention-days: 7

